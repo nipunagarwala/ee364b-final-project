@@ -1,2 +1,2 @@
-# ee364b-final-project
-EE364B Final Project
+# EE364B Final Project
+
