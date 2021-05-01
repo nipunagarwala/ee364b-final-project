@@ -35,7 +35,7 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 
 	Q,R = linalg.qr(SMatOmegaMatProd)
 	MNumRows = SMatOmegaMatProd.shape[0]
-	NNumCols = SMatOmegaMatProd.shape[0]
+	NNumCols = SMatOmegaMatProd.shape[1]
 	QFinal = Q
 	if MNumRows > NNumCols:
 		QFinal = Q[:, np.arange(NNumCols)]
@@ -66,7 +66,9 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 
 
 def main():
-	findSMat("matrices/Trefethen_64.mat", "tref2")
+	SMat = findSMat("matrices/Trefethen_64.mat", "tref2")
+	QMat = findThinQ(SMat, 24, RndType='Gaussian')
+
 
 
 
