@@ -24,7 +24,7 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 
 	return SMat
 
-def findQ(SMat, EmbedRow, RndType='JLT'):
+def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	SMatOmegaMatProd = np.zeros((EmbedRow, SMat.shape[1]))
 	if RndType == 'Gaussian':
 		SMatOmegaMatProd = gaussian_random_projection(SMat, EmbedRow)
@@ -34,8 +34,13 @@ def findQ(SMat, EmbedRow, RndType='JLT'):
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
 
 	Q,R = linalg.qr(SMatOmegaMatProd)
+	MNumRows = SMatOmegaMatProd.shape[0]
+	NNumCols = SMatOmegaMatProd.shape[0]
+	QFinal = Q
+	if MNumRows > NNumCols:
+		QFinal = Q[:, np.arange(NNumCols)]
 
-	return Q
+	return QFinal
 
 
 def findATilde(QMat,AMat):
