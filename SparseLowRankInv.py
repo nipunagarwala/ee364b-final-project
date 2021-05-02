@@ -10,9 +10,11 @@ import random
 import scipy.linalg
 import math
 import scipy.io as sio
-import import_ipynb
-import FJLTDemo
+import fjlt
 
+'''
+FIXME: Use sparse representation to save computation
+'''
 
 def findSMat(MstarPath, MatlabVarName, AMat=None):
 	MStarMat_dict = sio.loadmat(MstarPath, squeeze_me=True)
@@ -21,16 +23,18 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 	MStarMat_CSR = MStarMat_dict[MatlabVarName]
 	MStarMatDense = MStarMat_CSR.todense()
 	Idn = np.identity(MStarMatDense.shape[0])
-	SMat = 2*Idn - np.dot(MStarMatDense, AMat) + np.dot(AMat, MStarMatDense)
+	MStarAMatProd = np.dot(MStarMatDense, AMat)
+	SMat = 2*Idn - MStarAMatProd - MStarAMatProd.T
 
 	return SMat
 
 def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	SMatOmegaMatProd = np.zeros((EmbedRow, SMat.shape[1]))
 	if RndType == 'Gaussian':
-		SMatOmegaMatProd = FJLTDemo.gaussian_random_projection(SMat, EmbedRow)
+		SMatOmegaMatProd = fjlt.gaussian_random_projection(SMat, EmbedRow)
 	elif RndType == 'JLT':
-		SMatOmegaMatProd = FJLTDemo.fjlt_sfd(SMat, EmbedRow)
+		print(SMat.shape)
+		SMatOmegaMatProd = fjlt.fjlt(SMat, EmbedRow)
 	else:
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
 
@@ -56,8 +60,10 @@ def findEMat(QMat, SMat):
 
 def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	PMat = cp.Variable(RNumCol, RNumCol)
-	objective_fn = cp.norm2(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat))
-	prob = cp.Problem(cp.Minimize(objective_fn))
+	objective_fn = cp.norm(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat),
+							p='fro')
+	prob = cp.Problem(cp.Minimize(objective_fn),
+				[PMat >> 0])
 
 	prob.solve()
 	PMatVal = PMat.value
@@ -70,8 +76,10 @@ def main():
 	mean = np.zeros(64)
 	CovMat = np.identity(64)
 	AMat = np.random.multivariate_normal(mean, CovMat, 64)
+	# MMat is with _SSAI_64
+	# AMat is without it
 	SMat = findSMat("matrices/Trefethen_64.mat", "tref2", AMat)
-	QMat = findThinQ(SMat, 24, RndType='Gaussian')
+	QMat = findThinQ(SMat, 24, RndType='JLT')
 
 
 
