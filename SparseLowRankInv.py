@@ -10,7 +10,8 @@ import random
 import scipy.linalg
 import math
 import scipy.io as sio
-from ipynb.fs.full.my_functions import fjlt_sfd, gaussian_random_projection
+import import_ipynb
+import FJLTDemo
 
 
 def findSMat(MstarPath, MatlabVarName, AMat=None):
@@ -27,9 +28,9 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	SMatOmegaMatProd = np.zeros((EmbedRow, SMat.shape[1]))
 	if RndType == 'Gaussian':
-		SMatOmegaMatProd = gaussian_random_projection(SMat, EmbedRow)
+		SMatOmegaMatProd = FJLTDemo.gaussian_random_projection(SMat, EmbedRow)
 	elif RndType == 'JLT':
-		SMatOmegaMatProd = fjlt_sfd(SMat, EmbedRow)
+		SMatOmegaMatProd = FJLTDemo.fjlt_sfd(SMat, EmbedRow)
 	else:
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
 
@@ -64,11 +65,13 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	return PMatVal
 
 
-
 def main():
-	SMat = findSMat("matrices/Trefethen_64.mat", "tref2")
+	# Testing the code with a random matrix
+	mean = np.zeros(64)
+	CovMat = np.identity(64)
+	AMat = np.random.multivariate_normal(mean, CovMat, 64)
+	SMat = findSMat("matrices/Trefethen_64.mat", "tref2", AMat)
 	QMat = findThinQ(SMat, 24, RndType='Gaussian')
-
 
 
 
