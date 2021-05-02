@@ -28,6 +28,7 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 
 	return SMat
 
+
 def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	SMatOmegaMatProd = np.zeros((EmbedRow, SMat.shape[1]))
 	if RndType == 'Gaussian':
@@ -72,13 +73,11 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 
 
 def main():
-	# Testing the code with a random matrix
 	mean = np.zeros(64)
 	CovMat = np.identity(64)
-	AMat = np.random.multivariate_normal(mean, CovMat, 64)
-	# MMat is with _SSAI_64
-	# AMat is without it
-	SMat = findSMat("matrices/Trefethen_64.mat", "tref2", AMat)
+	AMat_dict = sio.loadmat("matrices/Trefethen_64.mat", squeeze_me=True)
+	AMat = AMat_dict['tref2'].todense() #FIXME: Change to sparse representation only
+	SMat = findSMat("matrices/Trefethen_SSAI_64.mat", "Mst", AMat)
 	QMat = findThinQ(SMat, 24, RndType='JLT')
 
 
