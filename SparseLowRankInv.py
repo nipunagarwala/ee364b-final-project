@@ -34,19 +34,18 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	if RndType == 'Gaussian':
 		SMatOmegaMatProd = fjlt.gaussian_random_projection(SMat, EmbedRow)
 	elif RndType == 'JLT':
-		print(SMat.shape)
 		SMatOmegaMatProd = fjlt.fjlt(SMat, EmbedRow)
 	else:
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
 
-	Q,R = linalg.qr(SMatOmegaMatProd)
+	Q,R = LA.qr(SMatOmegaMatProd)
 	MNumRows = SMatOmegaMatProd.shape[0]
 	NNumCols = SMatOmegaMatProd.shape[1]
 	QFinal = Q
 	if MNumRows > NNumCols:
 		QFinal = Q[:, np.arange(NNumCols)]
 
-	return QFinal
+	return QFinal, NNumCols
 
 
 def findATilde(QMat,AMat):
@@ -69,6 +68,8 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	prob.solve()
 	PMatVal = PMat.value
 
+	print(PMat.value)
+
 	return PMatVal
 
 
@@ -78,7 +79,11 @@ def main():
 	AMat_dict = sio.loadmat("matrices/Trefethen_64.mat", squeeze_me=True)
 	AMat = AMat_dict['tref2'].todense() #FIXME: Change to sparse representation only
 	SMat = findSMat("matrices/Trefethen_SSAI_64.mat", "Mst", AMat)
-	QMat = findThinQ(SMat, 24, RndType='JLT')
+	QMat, RNumCols = findThinQ(SMat, 24, RndType='JLT')
+	AMatTilde = findATilde(QMat, AMat)
+	EMat = findEMat(QMat, SMat)
+
+	PVal = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
 
 
 
