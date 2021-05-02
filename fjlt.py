@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.random_projection import GaussianRandomProjection
 
 def fjlt(A, k):
     """
@@ -16,4 +17,12 @@ def fjlt(A, k):
     DA = sign_vector * A
     FDA = np.fft.fft(DA, axis=0, norm='ortho')
     A_embedded = np.sqrt(d / k) * FDA[idx]
+    return A_embedded
+
+def gaussian_random_projection(A, k):
+    """
+    Gaussian random projection from sklearn.
+    """
+    transformer = GaussianRandomProjection(n_components=k)
+    A_embedded = transformer.fit_transform(A.T).T
     return A_embedded
