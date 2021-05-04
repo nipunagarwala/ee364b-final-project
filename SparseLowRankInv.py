@@ -83,7 +83,13 @@ def findUMat(QMat, UTildeMat):
 
 def checkResult(UMat, MStarMatDense, AMat):
 	tempProd = MStarMatDense + np.dot(UMat, UMat.T)
-	finalProd = np.dot(tempProd, AMat) + np.dot(AMat, tempProd)
+	temprod2 = np.dot(tempProd, AMat) 
+	finalProd = temprod2+np.transpose(temprod2)-2* np.identity(MStarMatDense.shape[0])
+	finnorm = LA.norm(finalProd,'fro')
+	temprod2 = np.dot(MStarMatDense, AMat) 
+	finalProd = temprod2+np.transpose(temprod2)-2* np.identity(MStarMatDense.shape[0])
+	startnorm = LA.norm(finalProd,'fro')
+
 
 
 
