@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import cvxpy as cp
 from numpy import linalg as LA
 import random
-import scipy.linalg
+from scipy.linalg import ldl
 import math
 import scipy.io as sio
 import fjlt
@@ -21,12 +21,12 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 	# Hardcoded to the 4th entry since that seems to be the name of the key actually having
 	# the matrix value
 	MStarMat_CSR = MStarMat_dict[MatlabVarName]
-	MStarMatDense = MStarMat_CSR.todense()
+	MStarMatDense = np.asarray(MStarMat_CSR.todense())
 	Idn = np.identity(MStarMatDense.shape[0])
 	MStarAMatProd = np.dot(MStarMatDense, AMat)
 	SMat = 2*Idn - MStarAMatProd - MStarAMatProd.T
 
-	return SMat
+	return SMat, MStarMatDense
 
 
 def findThinQ(SMat, EmbedRow, RndType='JLT'):
@@ -59,31 +59,50 @@ def findEMat(QMat, SMat):
 
 
 def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
-	PMat = cp.Variable(RNumCol, RNumCol)
+	PMat = cp.Variable((RNumCol,RNumCol))
 	objective_fn = cp.norm(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat),
 							p='fro')
-	prob = cp.Problem(cp.Minimize(objective_fn),
-				[PMat >> 0])
+	prob = cp.Problem(cp.Minimize(objective_fn))
 
 	prob.solve()
 	PMatVal = PMat.value
 
-	print(PMat.value)
-
 	return PMatVal
+
+def doCholeskyFactAbsEigenVal(PMat):
+	print(PMat.shape)
+	eigVal, eigVec = np.linalg.eig(PMat)
+	eigValAbsDiagMat = np.diag(abs(eigVal))
+	PMatPSD = np.dot(np.dot(eigVec, eigValAbsDiagMat), eigVec.T)
+	UTildeMat = np.linalg.cholesky(PMatPSD)
+	return UTildeMat
+
+def findUMat(QMat, UTildeMat):
+	UMat = np.dot(QMat, UTildeMat)
+	return UMat
+
+def checkResult(UMat, MStarMatDense, AMat):
+	tempProd = MStarMatDense + np.dot(UMat, UMat.T)
+	finalProd = np.dot(tempProd, AMat) + np.dot(AMat, tempProd)
+
+
+
 
 
 def main():
 	mean = np.zeros(64)
 	CovMat = np.identity(64)
 	AMat_dict = sio.loadmat("matrices/Trefethen_64.mat", squeeze_me=True)
-	AMat = AMat_dict['tref2'].todense() #FIXME: Change to sparse representation only
-	SMat = findSMat("matrices/Trefethen_SSAI_64.mat", "Mst", AMat)
-	QMat, RNumCols = findThinQ(SMat, 24, RndType='JLT')
+	AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
+	SMat, MStarMatDense = findSMat("matrices/Trefethen_SSAI_64.mat", "Mst", AMat)
+	QMat, RNumCols = findThinQ(SMat, 4, RndType='JLT')
 	AMatTilde = findATilde(QMat, AMat)
 	EMat = findEMat(QMat, SMat)
 
 	PVal = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
+	UTildeMat = doCholeskyFactAbsEigenVal(PVal)
+	UMat = findUMat(QMat, UTildeMat)
+	checkResult(UMat, MStarMatDense, AMat)
 
 
 

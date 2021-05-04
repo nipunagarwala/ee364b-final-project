@@ -17,7 +17,7 @@ def fjlt(A, k):
     DA = sign_vector * A
     FDA = np.fft.fft(DA, axis=0, norm='ortho')
     A_embedded = np.sqrt(d / k) * FDA[idx]
-    return A_embedded
+    return A_embedded.T #FIXME: Is this right?
 
 def gaussian_random_projection(A, k):
     """
