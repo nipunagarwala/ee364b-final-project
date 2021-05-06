@@ -99,6 +99,7 @@ def checkResult(UMat, MStarMatDense, AMat):
 def main():
 	AMatPath = "matrices/Wathen_11041.mat"
 	MStarPath = "matrices/Wathen_SSAI_11041.mat"
+	NumEmbedRows = 3000
 	AMat_dict = sio.loadmat(AMatPath, squeeze_me=True)
 	AMat = None
 	if "Wathen" in AMatPath:
@@ -107,7 +108,7 @@ def main():
 		AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
 
 	SMat, MStarMatDense = findSMat(MStarPath, "Mst", AMat)
-	QMat, RNumCols = findThinQ(SMat, 4, RndType='JLT')
+	QMat, RNumCols = findThinQ(SMat, NumEmbedRows, RndType='JLT')
 	AMatTilde = findATilde(QMat, AMat)
 	EMat = findEMat(QMat, SMat)
 
