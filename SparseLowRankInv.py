@@ -10,20 +10,37 @@ import random
 from scipy.linalg import ldl
 import math
 import scipy.io as sio
+from scipy import sparse
 import fjlt
 
 '''
 FIXME: Use sparse representation to save computation
 '''
 
+MAT_REPR_TYPE = "Dense"
+AMatPath = "matrices/Trefethen_64.mat"
+MStarPath = "matrices/Trefethen_SSAI_64.mat"
+NUM_EMBED_ROWS = 4
+
+
 def findSMat(MstarPath, MatlabVarName, AMat=None):
 	MStarMat_dict = sio.loadmat(MstarPath, squeeze_me=True)
 	# Hardcoded to the 4th entry since that seems to be the name of the key actually having
 	# the matrix value
 	MStarMat_CSR = MStarMat_dict[MatlabVarName]
-	MStarMatDense = np.asarray(MStarMat_CSR.todense())
-	Idn = np.identity(MStarMatDense.shape[0])
-	MStarAMatProd = np.dot(MStarMatDense, AMat)
+	MStarMatDense = None
+	if MAT_REPR_TYPE == "Sparse":
+		MStarMatDense = sparse.csr_matrix(np.asarray(MStarMat_CSR))
+	else:
+		MStarMatDense = np.asarray(MStarMat_CSR.todense())
+
+	Idn = sparse.csr_matrix(np.identity(MStarMatDense.shape[0]))
+	MStarAMatProd = None
+	if MAT_REPR_TYPE == "Sparse":
+		MStarAMatProd = MStarMatDense.multiply(AMat)
+	else:
+		MStarAMatProd = np.dot(MStarMatDense, AMat)
+
 	SMat = 2*Idn - MStarAMatProd - MStarAMatProd.T
 
 	return SMat, MStarMatDense
@@ -59,6 +76,7 @@ def findEMat(QMat, SMat):
 
 
 def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
+	print("Starting CVXPY Solver")
 	PMat = cp.Variable((RNumCol,RNumCol))
 	objective_fn = cp.norm(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat),
 							p='fro')
@@ -67,10 +85,13 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	prob.solve()
 	PMatVal = PMat.value
 
+	print("Ended CVXPY Solver\n")
+
 	return PMatVal
 
 def doCholeskyFactAbsEigenVal(PMat):
-	print(PMat.shape)
+	print("Started Cholesky Factorization\n")
+
 	eigVal, eigVec = np.linalg.eig(PMat)
 	eigValAbsDiagMat = np.diag(abs(eigVal))
 	PMatPSD = np.dot(np.dot(eigVec, eigValAbsDiagMat), eigVec.T)
@@ -83,6 +104,7 @@ def findUMat(QMat, UTildeMat):
 
 
 def checkResult(UMat, MStarMatDense, AMat):
+	print("Checking awesomenesssss of Result\n")
 	tempProd = MStarMatDense + np.dot(UMat, UMat.T)
 	temprod2 = np.dot(tempProd, AMat) 
 	finalProd = temprod2+np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
@@ -97,18 +119,22 @@ def checkResult(UMat, MStarMatDense, AMat):
 
 
 def main():
-	AMatPath = "matrices/Wathen_11041.mat"
-	MStarPath = "matrices/Wathen_SSAI_11041.mat"
-	NumEmbedRows = 3000
+
 	AMat_dict = sio.loadmat(AMatPath, squeeze_me=True)
 	AMat = None
 	if "Wathen" in AMatPath:
-		AMat = np.asarray(AMat_dict['A'].todense()) #FIXME: Change to sparse representation only
+		if MAT_REPR_TYPE == "Sparse":
+			AMat = sparse.csr_matrix(np.asarray(AMat_dict['A']))
+		else:
+			AMat = np.asarray(AMat_dict['A'].todense()) #FIXME: Change to sparse representation only
 	elif "Trefethen" in AMatPath:
-		AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
+		if MAT_REPR_TYPE == "Sparse":
+			AMat = sparse.csr_matrix(np.asarray(AMat_dict['tref2']))
+		else:
+			AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
 
 	SMat, MStarMatDense = findSMat(MStarPath, "Mst", AMat)
-	QMat, RNumCols = findThinQ(SMat, NumEmbedRows, RndType='JLT')
+	QMat, RNumCols = findThinQ(SMat, NUM_EMBED_ROWS, RndType='Gaussian')
 	AMatTilde = findATilde(QMat, AMat)
 	EMat = findEMat(QMat, SMat)
 
