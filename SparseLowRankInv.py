@@ -99,8 +99,27 @@ def doCholeskyFactAbsEigenVal(PMat):
 	UTildeMat = np.linalg.cholesky(PMatPSD)
 	return UTildeMat
 
+def calcUTilde(PMat):
+	print("Started Cholesky Factorization\n")
+
+	eigVal, eigVec = np.linalg.eig(PMat) 
+	keepInd=(eigVal>0) #is this the right syntax? I want a vector of indices where the eigenvalue is larger than 0
+	#throw away rows and columns of negative eigenvalues
+	eigVec=eigVec[keepInd,keepInd] 
+	eigVaL=eigVal[keepInd] 
+	# create a matrix with only the positive eigenvalues
+	eigValAbsDiagMat = np.diag(eigVal)
+	PMatPSD = np.dot(np.dot(eigVec, eigValAbsDiagMat), eigVec.T)
+	UTildeMat = np.linalg.cholesky(PMatPSD)
+	return UTildeMat
+
 def findUMat(QMat, UTildeMat):
 	UMat = np.dot(QMat, UTildeMat)
+	return UMat
+
+def findUMatSmall(QMat, UTildeMat):
+	Ushape=UTildeMat.shape # number of rows for U
+	UMat = np.dot(QMat[:,0:Ushape[0]], UTildeMat) #take same number of columns for Q
 	return UMat
 
 
@@ -140,8 +159,10 @@ def main():
 	EMat = findEMat(QMat, SMat)
 
 	PVal = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
-	UTildeMat = doCholeskyFactAbsEigenVal(PVal)
-	UMat = findUMat(QMat, UTildeMat)
+	#UTildeMat = doCholeskyFactAbsEigenVal(PVal)
+	#UMat = findUMat(QMat, UTildeMat)
+	UTildeMat = calcUTilde(PVal)
+	UMat = findUMatSmall(QMat, UTildeMat)
 	checkResult(UMat, MStarMatDense, AMat)
 
 
