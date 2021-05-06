@@ -81,26 +81,32 @@ def findUMat(QMat, UTildeMat):
 	UMat = np.dot(QMat, UTildeMat)
 	return UMat
 
+
 def checkResult(UMat, MStarMatDense, AMat):
 	tempProd = MStarMatDense + np.dot(UMat, UMat.T)
 	temprod2 = np.dot(tempProd, AMat) 
-	finalProd = temprod2+np.transpose(temprod2)-2* np.identity(MStarMatDense.shape[0])
+	finalProd = temprod2+np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
 	finnorm = LA.norm(finalProd,'fro')
 	temprod2 = np.dot(MStarMatDense, AMat) 
-	finalProd = temprod2+np.transpose(temprod2)-2* np.identity(MStarMatDense.shape[0])
+	finalProd = temprod2 + np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
 	startnorm = LA.norm(finalProd,'fro')
 
-
-
+	print("Starting Norm: {0}".format(startnorm))
+	print("Final Norm: {0}".format(finnorm))
 
 
 
 def main():
-	mean = np.zeros(64)
-	CovMat = np.identity(64)
-	AMat_dict = sio.loadmat("matrices/Trefethen_64.mat", squeeze_me=True)
-	AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
-	SMat, MStarMatDense = findSMat("matrices/Trefethen_SSAI_64.mat", "Mst", AMat)
+	AMatPath = "matrices/Wathen_11041.mat"
+	MStarPath = "matrices/Wathen_SSAI_11041.mat"
+	AMat_dict = sio.loadmat(AMatPath, squeeze_me=True)
+	AMat = None
+	if "Wathen" in AMatPath:
+		AMat = np.asarray(AMat_dict['A'].todense()) #FIXME: Change to sparse representation only
+	elif "Trefethen" in AMatPath:
+		AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
+
+	SMat, MStarMatDense = findSMat(MStarPath, "Mst", AMat)
 	QMat, RNumCols = findThinQ(SMat, 4, RndType='JLT')
 	AMatTilde = findATilde(QMat, AMat)
 	EMat = findEMat(QMat, SMat)
