@@ -20,10 +20,10 @@ Global variables to tune and matrices to use.
 MAT_REPR_TYPE = "Dense"
 AMatPath = "matrices/Trefethen_4096.mat"
 MStarPath = "matrices/Trefethen_SSAI_4096.mat"
-NUM_EMBED_ROWS = 4
+NUM_EMBED_ROWS = 8
 
 # Options include: Abs, Discard
-NEG_EIG_VAL_METHOD = "Abs"
+NEG_EIG_VAL_METHOD = "Discard"
 
 
 def findSMat(MstarPath, MatlabVarName, AMat=None):
@@ -81,7 +81,7 @@ def findEMat(QMat, SMat):
 
 def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	print("Starting CVXPY Solver")
-	PMat = cp.Variable((RNumCol,RNumCol))
+	PMat = cp.Variable((RNumCol,RNumCol), symmetric=True)
 	objective_fn = cp.norm(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat),
 							p='fro')
 	prob = cp.Problem(cp.Minimize(objective_fn),
@@ -108,10 +108,13 @@ def doCholeskyFactEigenReduction(PMat):
 	print("Started Cholesky Factorization\n")
 
 	eigVal, eigVec = np.linalg.eig(PMat)
+	# Sorting the eigenvalues and eigenvectors because apparently Numpy does not do that
 	idx = eigVal.argsort()[::-1]   
 	eigVal = eigVal[idx]
 	eigVec = eigVec[:,idx]
 
+	# Finding the first < 0 eigenvalue and discarding the negative eigenvalues
+	# Also discarding the associated eigenvectors and the associated rows.
 	eigValRed = np.where(eigVal > 0, eigVal, 0*eigVal)
 	firstZeroEig = np.argwhere(eigValRed <= 0)
 	if firstZeroEig.size == 0:
@@ -128,6 +131,8 @@ def doCholeskyFactEigenReduction(PMat):
 
 
 def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
+	# If we need an even further reduction in number of rows due to discarding
+	# of eigenvalues, do that with the newNumRows
 	UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
 	return UMat
 
