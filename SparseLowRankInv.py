@@ -31,10 +31,11 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 	MStarMatDense = None
 	if MAT_REPR_TYPE == "Sparse":
 		MStarMatDense = sparse.csr_matrix(np.asarray(MStarMat_CSR.todense()))
+		Idn = sparse.csr_matrix(np.identity(MStarMatDense.shape[0]))
 	else:
 		MStarMatDense = np.asarray(MStarMat_CSR.todense())
+		Idn = np.identity(MStarMatDense.shape[0])
 
-	Idn = sparse.csr_matrix(np.identity(MStarMatDense.shape[0]))
 	MStarAMatProd = None
 	if MAT_REPR_TYPE == "Sparse":
 		MStarAMatProd = MStarMatDense*AMat
