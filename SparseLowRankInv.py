@@ -103,6 +103,7 @@ def doCholeskyFactAbsEigenVal(PMat):
 	UTildeMat = np.linalg.cholesky(PMatPSD)
 	return UTildeMat
 
+
 def doCholeskyFactEigenReduction(PMat):
 	print("Started Cholesky Factorization\n")
 
@@ -128,6 +129,11 @@ def doCholeskyFactEigenReduction(PMat):
 
 def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
 	UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
+	return UMat
+
+def findUMatSmall(QMat, UTildeMat):
+	Ushape=UTildeMat.shape # number of rows for U
+	UMat = np.dot(QMat[:,0:Ushape[0]], UTildeMat) #take same number of columns for Q
 	return UMat
 
 
