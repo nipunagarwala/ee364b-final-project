@@ -30,14 +30,14 @@ def findSMat(MstarPath, MatlabVarName, AMat=None):
 	MStarMat_CSR = MStarMat_dict[MatlabVarName]
 	MStarMatDense = None
 	if MAT_REPR_TYPE == "Sparse":
-		MStarMatDense = sparse.csr_matrix(np.asarray(MStarMat_CSR))
+		MStarMatDense = sparse.csr_matrix(np.asarray(MStarMat_CSR.todense()))
 	else:
 		MStarMatDense = np.asarray(MStarMat_CSR.todense())
 
 	Idn = sparse.csr_matrix(np.identity(MStarMatDense.shape[0]))
 	MStarAMatProd = None
 	if MAT_REPR_TYPE == "Sparse":
-		MStarAMatProd = MStarMatDense.multiply(AMat)
+		MStarAMatProd = MStarMatDense*AMat
 	else:
 		MStarAMatProd = np.dot(MStarMatDense, AMat)
 
@@ -124,12 +124,12 @@ def main():
 	AMat = None
 	if "Wathen" in AMatPath:
 		if MAT_REPR_TYPE == "Sparse":
-			AMat = sparse.csr_matrix(np.asarray(AMat_dict['A']))
+			AMat = sparse.csr_matrix(np.asarray(AMat_dict['A'].todense()))
 		else:
 			AMat = np.asarray(AMat_dict['A'].todense()) #FIXME: Change to sparse representation only
 	elif "Trefethen" in AMatPath:
 		if MAT_REPR_TYPE == "Sparse":
-			AMat = sparse.csr_matrix(np.asarray(AMat_dict['tref2']))
+			AMat = sparse.csr_matrix(np.asarray(AMat_dict['tref2'].todense()))
 		else:
 			AMat = np.asarray(AMat_dict['tref2'].todense()) #FIXME: Change to sparse representation only
 
