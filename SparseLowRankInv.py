@@ -18,9 +18,12 @@ Global variables to tune and matrices to use.
 '''
 
 MAT_REPR_TYPE = "Dense"
-AMatPath = "matrices/Trefethen_64.mat"
-MStarPath = "matrices/Trefethen_SSAI_64.mat"
+AMatPath = "matrices/Trefethen_4096.mat"
+MStarPath = "matrices/Trefethen_SSAI_4096.mat"
 NUM_EMBED_ROWS = 4
+
+# Options include: Abs, Discard
+NEG_EIG_VAL_METHOD = "Abs"
 
 
 def findSMat(MstarPath, MatlabVarName, AMat=None):
@@ -81,7 +84,8 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	PMat = cp.Variable((RNumCol,RNumCol))
 	objective_fn = cp.norm(EMat - cp.matmul(PMat,AtildeMat) - cp.matmul(AtildeMat, PMat),
 							p='fro')
-	prob = cp.Problem(cp.Minimize(objective_fn))
+	prob = cp.Problem(cp.Minimize(objective_fn),
+					[PMat >> 0])
 
 	prob.solve()
 	PMatVal = PMat.value
@@ -99,8 +103,31 @@ def doCholeskyFactAbsEigenVal(PMat):
 	UTildeMat = np.linalg.cholesky(PMatPSD)
 	return UTildeMat
 
-def findUMat(QMat, UTildeMat):
-	UMat = np.dot(QMat, UTildeMat)
+def doCholeskyFactEigenReduction(PMat):
+	print("Started Cholesky Factorization\n")
+
+	eigVal, eigVec = np.linalg.eig(PMat)
+	idx = eigVal.argsort()[::-1]   
+	eigVal = eigVal[idx]
+	eigVec = eigVec[:,idx]
+
+	eigValRed = np.where(eigVal > 0, eigVal, 0*eigVal)
+	firstZeroEig = np.argwhere(eigValRed <= 0)
+	if firstZeroEig.size == 0:
+		firstZeroEig = eigVal.shape[0]
+	else:
+		firstZeroEig = firstZeroEig[0][0]
+
+	reducedEigValDiag = np.diag(eigVal[:firstZeroEig])
+	reducedEigVec = eigVec[:firstZeroEig,:firstZeroEig]
+	PMatPSD = np.dot(np.dot(reducedEigVec, reducedEigValDiag), reducedEigVec.T)
+	UTildeMat = np.linalg.cholesky(PMatPSD)
+	return UTildeMat, firstZeroEig
+
+
+
+def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
+	UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
 	return UMat
 
 
@@ -140,10 +167,14 @@ def main():
 	EMat = findEMat(QMat, SMat)
 
 	PVal = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
-	UTildeMat = doCholeskyFactAbsEigenVal(PVal)
-	UMat = findUMat(QMat, UTildeMat)
-	checkResult(UMat, MStarMatDense, AMat)
+	UTildeMat, newNumRows = None, None
+	if NEG_EIG_VAL_METHOD == "Abs":
+		UTildeMat = doCholeskyFactAbsEigenVal(PVal)
+	elif NEG_EIG_VAL_METHOD == "Discard":
+		UTildeMat, newNumRows = doCholeskyFactEigenReduction(PVal)
 
+	UMat = findUMat(QMat, UTildeMat, newNumRows)
+	checkResult(UMat, MStarMatDense, AMat)
 
 
 if __name__ == '__main__':
