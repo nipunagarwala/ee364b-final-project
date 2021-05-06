@@ -14,7 +14,7 @@ from scipy import sparse
 import fjlt
 
 '''
-FIXME: Use sparse representation to save computation
+Global variables to tune and matrices to use.
 '''
 
 MAT_REPR_TYPE = "Dense"
