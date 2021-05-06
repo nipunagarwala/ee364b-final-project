@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.fft import dct
 from sklearn.random_projection import GaussianRandomProjection
 
 def fjlt(A, k):
@@ -16,7 +17,7 @@ def fjlt(A, k):
     idx = np.zeros(k, dtype=int)
     idx[1:] = np.random.choice(d - 1, k - 1, replace=False) + 1
     DA = sign_vector * A
-    FDA = np.fft.fft(DA, axis=0, norm='ortho')
+    FDA = dct(DA, axis=0, norm='ortho')
     A_embedded = np.sqrt(d / k) * FDA[idx]
     return A_embedded.T
 
