@@ -10,9 +10,10 @@ from SparseLowRankInv import *
 MAT_REPR_TYPE = "Dense"
 AMatPath = "matrices/Trefethen_64.mat"
 MStarPath = "matrices/Trefethen_SSAI_64.mat"
-IMAGE_NAME = 'Trefethen_64_Gaussian.png'
+IMAGE_NAME = 'Trefethen_64_JLT_Abs2.png'
 NUM_EMBED_ROWS_LIST = np.arange(2, 64, 2)
-PROJECTION = 'Gaussian'
+PROJECTION = 'JLT'
+NEG_EIG_VAL_METHOD = 'Abs'
 
 def calc_objective(UMat, MStarMatDense, AMat):
 	if UMat is None:
@@ -62,7 +63,7 @@ def main():
 	plt.plot(NUM_EMBED_ROWS_LIST, obj_log, label=r'$M^* + UU^T$')
 	plt.axhline(y=obj_only_Mstar, label=r'M^*', c='r')
 	plt.xlabel('Rank, r')
-	plt.ylabel(r'$||A - M^* - UU^T||_F$')
+	plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 	plt.title('Error of Sparse + Low-rank approximation')
 	plt.legend()
 	plt.savefig(IMAGE_NAME)

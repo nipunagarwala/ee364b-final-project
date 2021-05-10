@@ -1,6 +1,22 @@
 import numpy as np
 from scipy.fft import dct
 from sklearn.random_projection import GaussianRandomProjection
+from scipy import sparse
+
+def sjlt(A, k):
+    """
+    Yin et al. 2020 ESE: Extremely Sparse JL Transform.
+    Implemented for scipy.sparse.csc_matrix representation.
+    """
+    d = A.shape[1]
+    h = np.random.choice(d, size=k)
+    sigma = np.random.choice([-1, 1], size=d)
+    R = sparse.lil_matrix((d, k))
+    for j in range(k):
+        R[h[j], j] = sigma[h[j]]
+    R = R.tocsc()
+    A_sjlt = (A.dot(R)).multiply(np.sqrt(d / k))
+    return A_sjlt
 
 def fjlt(A, k):
     """
