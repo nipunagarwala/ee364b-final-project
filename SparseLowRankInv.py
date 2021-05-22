@@ -155,8 +155,10 @@ def checkResult(UMat, MStarMatDense, AMat):
 def read_matrices(matPaths):
 	AMat, MStar = None, None
 	if len(matPaths) == 1:
+		# Ar is the actual matrix (it's dense), the A is the sparse approximation, 
+		# IAr is the actual inverse (we don't know it), r in the name is the rank of the low rank addition
 		data = sio.loadmat(matPaths[0], squeeze_me=True)
-		AMat = data['IAr']  # Dense
+		AMat = data['Ar']  # Dense
 		MStar = np.asarray(data['A'].todense())   # Dense
 	else:
 		AMatPath, MStarPath = matPaths

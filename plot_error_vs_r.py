@@ -10,15 +10,17 @@ from SparseLowRankInv import *
 MAT_REPR_TYPE = "Dense"
 # AMatPath = "matrices/Trefethen_64.mat"
 # MStarPath = "matrices/Trefethen_SSAI_64.mat"
-matPaths = ["matrices/SPLRI_n4033_r4.mat"]
-IMAGE_NAME = 'result/SPLRI_r4.png'
-NUM_EMBED_ROWS_LIST = np.arange(2, 64, 2)
+matPaths = ["matrices/SPLRI_n4033_r2.mat"]
+IMAGE_NAME = 'result/SPLRI_r2_v2.png'
+NUM_EMBED_ROWS_LIST = np.arange(1, 8, 1)
 PROJECTION = 'JLT'
 NEG_EIG_VAL_METHOD = 'Abs'
 
+np.random.seed(0)
+
 def calc_objective(UMat, MStarMatDense, AMat):
 	if UMat is None:
-		temprod2 = np.dot(MStarMatDense, AMat) 
+		temprod2 = np.dot(MStarMatDense, AMat) # Approx Inv A @ A 
 	else:
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
 		temprod2 = np.dot(tempProd, AMat) 
