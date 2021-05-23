@@ -167,15 +167,15 @@ def read_matrices(matPaths):
 				AMat = sio.loadmat(AMatPath, squeeze_me=True)['A']      # Sparse CSC
 				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
 			else:
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['A'].todense()      # Sparse CSC
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense()  # Sparse CSC
+				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['A'].todense())
+				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
 		elif "Trefethen" in AMatPath:
 			if MAT_REPR_TYPE == "Sparse":
 				AMat = sio.loadmat(AMatPath, squeeze_me=True)['tref2']  # Sparse CSC
 				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
 			else:
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['tref2'].todense() 
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense()
+				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['tref2'].todense())
+				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
 
 	print("Finished reading in the Matrices")
 	return AMat, MStar
