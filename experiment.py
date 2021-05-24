@@ -77,7 +77,7 @@ def runBaselineMatrices(targetRanks, saveName):
 	plotRanks = np.concatenate(([0], targetRanks))
 	for name in names:
 		plt.plot(plotRanks, results[name], label=name)
-	plt.xlabel('Target rank')
+	plt.xlabel('Target rank, r')
 	plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 	plt.title('Error of Sparse + Low-rank Approximation')
 	plt.legend()
@@ -111,15 +111,16 @@ def runExperiments():
 		obj_history = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS)
 		plotRanks = np.concatenate(([0], TARGET_RANKS))
 		plt.plot(plotRanks, obj_history)
-		plt.xlabel('Target rank')
+		plt.xlabel('Target rank, r')
 		plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 		plt.title('Error of Sparse + Low-rank Approximation')
 		plt.savefig('{}.png'.format(saveName))
 		plt.clf()
 
-def plot_analytical_flop_counts(n, p_list, r_list, savename):
+def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 
-	flop_counts = np.zeros((len(p_list), len(r_list)))
+	flop_counts = np.zeros((len(p_frac_list), len(r_list)))
+	p_list = (n * p_frac_list).astype(int)
 
 	# Compute flop counts not depending on the sparisty p
 	SJLT_count = n * (n + 1) * r_list
@@ -152,8 +153,8 @@ def plot_analytical_flop_counts(n, p_list, r_list, savename):
 	inv_count = n ** 3
 
 	# Plotting
-	for i, p in enumerate(p_list):
-		plt.plot(r_list, flop_counts[i], label='p = {:d}'.format(p))
+	for i, p in enumerate(p_frac_list):
+		plt.plot(r_list, flop_counts[i], label='p / n = {}'.format(p))
 	plt.axhline(y=inv_count, c='r', ls='--', label='Matrix inversion')
 	plt.xlabel('r')
 	plt.ylabel('Flop count')
@@ -165,10 +166,10 @@ def plot_analytical_flop_counts(n, p_list, r_list, savename):
 def main():
 	# runBaselineMatrices(NUM_EMBED_ROWS_LIST, SAVE_NAME)
 	# runExperiments()
-	n = 4096
-	p_list = np.array([n / 5, n / 10, n / 20], dtype=int)
+	n = 40000
+	p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
 	r_list = np.arange(1, 100)
-	plot_analytical_flop_counts(n, p_list, r_list, 'result/flop_{}v3'.format(n))
+	plot_analytical_flop_counts(n, p_frac_list, r_list, 'result/flop_{}'.format(n))
 
 if __name__ == '__main__':
 	main()
