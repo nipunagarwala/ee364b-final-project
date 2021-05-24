@@ -5,6 +5,8 @@ Generate some results for midterm report
 import numpy as np
 from matplotlib import pyplot as plt
 import pickle
+
+from scipy.linalg.decomp_cholesky import cholesky
 from SparseLowRankInv import *
 
 MAT_REPR_TYPE = "Sparse"
@@ -115,9 +117,58 @@ def runExperiments():
 		plt.savefig('{}.png'.format(saveName))
 		plt.clf()
 
+def plot_analytical_flop_counts(n, p_list, r_list, savename):
+
+	flop_counts = np.zeros((len(p_list), len(r_list)))
+
+	# Compute flop counts not depending on the sparisty p
+	SJLT_count = n * (n + 1) * r_list
+	QR_count = 2 * (n - r_list / 3) * (r_list ** 2)
+	A_tilde_count = 2 * (n ** 2) * r_list
+	E_count = 2 * (n ** 2) * r_list
+	cvx_count = 1000 * (r_list ** 3)
+	cholesky_count = (r_list ** 3) / 3
+	U_count = (n ** 2) * r_list
+	count_no_p = SJLT_count + QR_count + A_tilde_count + E_count + cvx_count + \
+					cholesky_count + U_count
+	# plt.plot(SJLT_count, label='sjlt')
+	# plt.plot(QR_count, label='qr')
+	# plt.plot(A_tilde_count, label='Atilde')
+	# plt.plot(E_count, label='E')
+	# plt.plot(cvx_count, label='CVX')
+	# plt.plot(cholesky_count, label='Cholskey')
+	# plt.plot(U_count, label='U')
+	# plt.plot(count_no_p, label='No p')
+	# plt.legend()
+	# plt.savefig('{}-nop.png'.format(savename))
+	# plt.clf()
+
+	# Computing flop counts depending on the sparsity p
+	for i, p in enumerate(p_list):
+		MStar_count = 2 * (n ** 2) * p
+		S_count = 2 * (n ** 2) * p
+		flop_counts[i] = count_no_p + MStar_count + S_count
+
+	inv_count = n ** 3
+
+	# Plotting
+	for i, p in enumerate(p_list):
+		plt.plot(r_list, flop_counts[i], label='p = {:d}'.format(p))
+	plt.axhline(y=inv_count, c='r', ls='--', label='Matrix inversion')
+	plt.xlabel('r')
+	plt.ylabel('Flop count')
+	plt.title('Flop Count of Approximate Inverse, n = {}'.format(n))
+	plt.legend()
+	plt.savefig('{}.png'.format(savename))
+	plt.clf()
+
 def main():
 	# runBaselineMatrices(NUM_EMBED_ROWS_LIST, SAVE_NAME)
-	runExperiments()
+	# runExperiments()
+	n = 4096
+	p_list = np.array([n / 5, n / 10, n / 20], dtype=int)
+	r_list = np.arange(1, 100)
+	plot_analytical_flop_counts(n, p_list, r_list, 'result/flop_{}v3'.format(n))
 
 if __name__ == '__main__':
 	main()
