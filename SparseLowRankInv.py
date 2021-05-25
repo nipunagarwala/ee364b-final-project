@@ -64,7 +64,7 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 
 	Q,R = LA.qr(SMatOmegaMatProd)
 	end_time = time.perf_counter()
-	ThinQCalcTime += (end_time - start_time)
+	ThinQCalcTime = (end_time - start_time)
 	MNumRows = SMatOmegaMatProd.shape[0]
 	NNumCols = SMatOmegaMatProd.shape[1]
 	QFinal = Q
@@ -79,7 +79,7 @@ def findATilde(QMat,AMat):
 	start_time = time.perf_counter()
 	Atilde = np.dot(np.dot(QMat.T, AMat), QMat)
 	end_time = time.perf_counter()
-	AtildeCalcTime += (end_time - start_time)
+	AtildeCalcTime = (end_time - start_time)
 	return Atilde, AtildeCalcTime
 
 
@@ -87,7 +87,7 @@ def findEMat(QMat, SMat):
 	start_time = time.perf_counter()
 	EMat = np.dot(np.dot(QMat.T, SMat), QMat)
 	end_time = time.perf_counter()
-	EMatCalcTime += (end_time - start_time)
+	EMatCalcTime = (end_time - start_time)
 	return EMat, EMatCalcTime
 
 
@@ -102,7 +102,7 @@ def solveForPSDSymmetricP(EMat, AtildeMat, RNumCol):
 	start_time = time.perf_counter()
 	prob.solve()
 	end_time = time.perf_counter()
-	PSDCalcTime += (end_time - start_time)
+	PSDCalcTime = (end_time - start_time)
 	PMatVal = PMat.value
 
 	print("Ended CVXPY Solver\n")
@@ -118,7 +118,7 @@ def doCholeskyFactAbsEigenVal(PMat):
 	PMatPSD = np.dot(np.dot(eigVec, eigValAbsDiagMat), eigVec.T)
 	UTildeMat = np.linalg.cholesky(PMatPSD)
 	end_time = time.perf_counter()
-	CholeskyCalcTime += (end_time - start_time)
+	CholeskyCalcTime = (end_time - start_time)
 	return UTildeMat, CholeskyCalcTime
 
 
@@ -132,7 +132,7 @@ def doCholeskyFactEigenReduction(PMat):
 	eigVal = eigVal[idx]
 	eigVec = eigVec[:,idx]
 	end_time = time.perf_counter()
-	CholeskyCalcTime += (end_time - start_time)
+	CholeskyCalcTime = (end_time - start_time)
 
 	# Finding the first < 0 eigenvalue and discarding the negative eigenvalues
 	# Also discarding the associated eigenvectors and the associated rows.
@@ -157,7 +157,7 @@ def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
 	start_time = time.perf_counter()
 	UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
 	end_time = time.perf_counter()
-	UMatCalcTime += (end_time - start_time)
+	UMatCalcTime = (end_time - start_time)
 	return UMat, UMatCalcTime
 
 def findUMatSmall(QMat, UTildeMat):
