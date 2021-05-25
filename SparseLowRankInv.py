@@ -183,8 +183,10 @@ def checkResult(UMat, MStarMatDense, AMat):
 def read_matrices(matPaths):
 	AMat, MStar = None, None
 	if len(matPaths) == 1:
+		# Ar is the actual matrix (it's dense), the A is the sparse approximation, 
+		# IAr is the actual inverse (we don't know it), r in the name is the rank of the low rank addition
 		data = sio.loadmat(matPaths[0], squeeze_me=True)
-		AMat = data['IAr']  # Dense
+		AMat = data['Ar']  # Dense
 		MStar = np.asarray(data['A'].todense())   # Dense
 	else:
 		AMatPath, MStarPath = matPaths
@@ -193,15 +195,15 @@ def read_matrices(matPaths):
 				AMat = sio.loadmat(AMatPath, squeeze_me=True)['A']      # Sparse CSC
 				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
 			else:
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['A'].todense()      # Sparse CSC
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense()  # Sparse CSC
+				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['A'].todense())
+				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
 		elif "Trefethen" in AMatPath:
 			if MAT_REPR_TYPE == "Sparse":
 				AMat = sio.loadmat(AMatPath, squeeze_me=True)['tref2']  # Sparse CSC
 				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
 			else:
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['tref2'].todense() 
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense()
+				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['tref2'].todense())
+				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
 
 	print("Finished reading in the Matrices")
 	return AMat, MStar
