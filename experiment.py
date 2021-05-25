@@ -5,11 +5,10 @@ Generate some results for midterm report
 import numpy as np
 from matplotlib import pyplot as plt
 import pickle
+import time
+import SparseLowRankInv as slri
 
-from scipy.linalg.decomp_cholesky import cholesky
-from SparseLowRankInv import *
-
-MAT_REPR_TYPE = "Sparse"
+MAT_REPR_TYPE = "Dense"
 SAVE_NAME = 'result/baselines'
 NUM_EMBED_ROWS_LIST = np.arange(1, 21)
 PROJECTION = 'JLT'
@@ -24,40 +23,51 @@ def calcObjective(UMat, MStarMatDense, AMat):
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
 		temprod2 = np.dot(tempProd, AMat) 
 	finalProd = temprod2 + np.transpose(temprod2) - 2 * np.identity(MStarMatDense.shape[0])
-	obj = LA.norm(finalProd,'fro')
+	obj = np.linalg.norm(finalProd,'fro')
 	return obj
 
-def runSparseLowRankInvManyRanks(matPaths, targetRanks):
+def runSparseLowRankInvManyRanks(matPaths, targetRanks, completeInverse=False):
 
 	print('---Begin finding approximate inverses with many target ranks---')
 	print('Matrix name: {}'.format(matPaths))
 
 	# Prepare logging variable and load matrices
 	obj_log = np.zeros(len(targetRanks) + 1)  # First value is rank=0 i.e. only MStar as approximate inverse
-	AMat, MStar = read_matrices(matPaths)
+	time_log = np.zeros(len(targetRanks))
+	AMat, MStar = slri.read_matrices(matPaths)
 
-	SMat = findSMat(MStar, AMat)
+	SMat, SMatCalcTime = slri.findSMat(MStar, AMat)
 	obj_log[0] = calcObjective(None, MStar, AMat)
 	print('Starting norm: {}'.format(obj_log[0]))
 
 	# Find the low-rank correction U matrix for each target rank
 	for i, rank in enumerate(targetRanks):
-		QMat, RNumCols = findThinQ(SMat, rank, RndType=PROJECTION)
-		AMatTilde = findATilde(QMat, AMat)
-		EMat = findEMat(QMat, SMat)
+		QMat, RNumCols, ThinQCalcTime = slri.findThinQ(SMat, rank, RndType=PROJECTION)
+		AMatTilde, AtildeCalcTime = slri.findATilde(QMat, AMat)
+		EMat, EMatCalcTime = slri.findEMat(QMat, SMat)
 
-		PVal = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
+		PVal, PSDCalcTime = slri.solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
 		UTildeMat, newNumRows = None, None
 		if NEG_EIG_VAL_METHOD == "Abs":
-			UTildeMat = doCholeskyFactAbsEigenVal(PVal)
+			UTildeMat, CholeskyCalcTime = slri.doCholeskyFactAbsEigenVal(PVal)
 		elif NEG_EIG_VAL_METHOD == "Discard":
-			UTildeMat, newNumRows = doCholeskyFactEigenReduction(PVal)
+			UTildeMat, newNumRows, CholeskyCalcTime = slri.doCholeskyFactEigenReduction(PVal)
 
-		UMat = findUMat(QMat, UTildeMat, newNumRows)
+		UMat, UMatCalcTime = slri.findUMat(QMat, UTildeMat, newNumRows)
 		obj_log[i + 1] = calcObjective(UMat, MStar, AMat)
-		print('r = {}, norm: {}'.format(rank, obj_log[i]))
+		time_log[i] = SMatCalcTime + ThinQCalcTime + AtildeCalcTime + EMatCalcTime +\
+						PSDCalcTime + CholeskyCalcTime + UMatCalcTime
+		print('r = {}, norm: {}'.format(rank, obj_log[i + 1]))
+		print('Running time: {}'.format(time_log[i]))
 
-	return obj_log
+	fullInvTime = None
+	if completeInverse:
+		start_time = time.perf_counter()
+		AMatInv = np.linalg.inv(AMat)
+		end_time = time.perf_counter()
+		fullInvTime = (end_time - start_time)
+
+	return obj_log, time_log, fullInvTime
 
 def runBaselineMatrices(targetRanks, saveName):
 
@@ -83,7 +93,7 @@ def runBaselineMatrices(targetRanks, saveName):
 	plt.legend()
 	plt.savefig('{}.png'.format(saveName))
 
-def runExperiments():
+def runExperiments(completeInverse=False):
 	# MAT_PATHS = [
 	# 	['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
 	# 	['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
@@ -105,16 +115,37 @@ def runExperiments():
 		['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
 	]
 	SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512', 'result/Trefethen_4096']
-	TARGET_RANKS = np.arange(2, 65, 2)
+	TARGET_RANKS = np.arange(1, 65)
 
 	for saveName, matPaths in zip(SAVE_NAMES, MAT_PATHS):
-		obj_history = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS)
+		obj_history, time_history, fullInvTime = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS, completeInverse=completeInverse)
+		save_data = {
+			'obj': obj_history,
+			'time': time_history,
+			'rank': TARGET_RANKS
+		}
+
+		# Save results
+		pickle.dump(save_data, open('{}.p'.format(saveName), 'wb'))
+
+		# Plot objective
 		plotRanks = np.concatenate(([0], TARGET_RANKS))
 		plt.plot(plotRanks, obj_history)
 		plt.xlabel('Target rank, r')
 		plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 		plt.title('Error of Sparse + Low-rank Approximation')
-		plt.savefig('{}.png'.format(saveName))
+		plt.savefig('{}_obj.png'.format(saveName))
+		plt.clf()
+
+		# Plot time
+		plt.plot(TARGET_RANKS, time_history, label='Approximate inverse')
+		if fullInvTime is not None:
+			plt.axhline(y=fullInvTime, label='Complete inverse')
+		plt.xlabel('Target rank, r')
+		plt.ylabel('Time (s)')
+		plt.title('Computation time')
+		plt.legend()
+		plt.savefig('{}_time.png'.format(saveName))
 		plt.clf()
 
 def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
@@ -132,17 +163,6 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 	U_count = (n ** 2) * r_list
 	count_no_p = SJLT_count + QR_count + A_tilde_count + E_count + cvx_count + \
 					cholesky_count + U_count
-	# plt.plot(SJLT_count, label='sjlt')
-	# plt.plot(QR_count, label='qr')
-	# plt.plot(A_tilde_count, label='Atilde')
-	# plt.plot(E_count, label='E')
-	# plt.plot(cvx_count, label='CVX')
-	# plt.plot(cholesky_count, label='Cholskey')
-	# plt.plot(U_count, label='U')
-	# plt.plot(count_no_p, label='No p')
-	# plt.legend()
-	# plt.savefig('{}-nop.png'.format(savename))
-	# plt.clf()
 
 	# Computing flop counts depending on the sparsity p
 	for i, p in enumerate(p_list):
@@ -165,11 +185,11 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 
 def main():
 	# runBaselineMatrices(NUM_EMBED_ROWS_LIST, SAVE_NAME)
-	# runExperiments()
-	n = 40000
-	p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
-	r_list = np.arange(1, 100)
-	plot_analytical_flop_counts(n, p_frac_list, r_list, 'result/flop_{}'.format(n))
+	runExperiments(completeInverse=True)
+	# n = 40000
+	# p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
+	# r_list = np.arange(1, 100)
+	# plot_analytical_flop_counts(n, p_frac_list, r_list, 'result/flop_{}'.format(n))
 
 if __name__ == '__main__':
 	main()
