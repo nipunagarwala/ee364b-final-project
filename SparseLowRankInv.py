@@ -193,14 +193,16 @@ def findUMatSmall(QMat, UTildeMat):
 
 def checkResult(UMat, MStarMatDense, AMat):
 	print("Checking awesomenesssss of Result\n")
+	finnorm = 0
+	startnorm = 0
 	if MAT_REPR_TYPE == "Sparse":
 		UMat = sparse.csr_matrix(UMat)
 		tempProd = MStarMatDense + UMat*UMat.T
 		temprod2 = tempProd*AMat
-		finalProd = temprod2+temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.todense().shape[0]))
+		finalProd = temprod2+temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.shape[0]))
 		finnorm = sparse.linalg.norm(finalProd,'fro')
 		temprod2 = MStarMatDense*AMat 
-		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.todense().shape[0]))
+		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.shape[0]))
 		startnorm = sparse.linalg.norm(finalProd,'fro')
 	else:
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
@@ -281,5 +283,6 @@ def main():
 	print("Total runtime for Complete Inverse: {0}".format(fullInvTime))
 
 if __name__ == '__main__':
+	np.random.seed(9)
 	main()
 
