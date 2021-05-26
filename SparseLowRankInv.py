@@ -23,7 +23,7 @@ MAT_REPR_TYPE = "Sparse"
 # MStarPath = "matrices/Trefethen_SSAI_4096.mat"
 # matPaths = ["matrices/SPLRI_n4033_r2.mat"]
 matPaths = [ "matrices/Trefethen_4096.mat",  "matrices/Trefethen_SSAI_4096.mat"]
-NUM_EMBED_ROWS = 4
+NUM_EMBED_ROWS = 16
 
 # Options include: Abs, Discard
 NEG_EIG_VAL_METHOD = "Discard"
@@ -67,12 +67,13 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	end_time = time.perf_counter()
 	if MAT_REPR_TYPE == "Sparse":
 		Q = sparse.csr_matrix(Q)
+
 	ThinQCalcTime = (end_time - start_time)
 	MNumRows = SMatOmegaMatProd.shape[0]
 	NNumCols = SMatOmegaMatProd.shape[1]
 	QFinal = Q
 	if MNumRows > NNumCols:
-		QFinal = Q[:, np.arange(NNumCols)]
+		QFinal = sparse.csr_matrix(Q.todense()[:, np.arange(NNumCols)])
 
 	print("Finished Computing QR Factorization ...")
 	return QFinal, NNumCols,ThinQCalcTime
@@ -167,9 +168,15 @@ def doCholeskyFactEigenReduction(PMat):
 def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
 	# If we need an even further reduction in number of rows due to discarding
 	# of eigenvalues, do that with the newNumRows
-	start_time = time.perf_counter()
-	UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
-	end_time = time.perf_counter()
+	QMatRepr = None
+	if MAT_REPR_TYPE == "Sparse":
+		QMatRepr = sparse.csr_matrix(QMat.todense()[:,:newNumRows])
+		start_time = time.perf_counter()
+		UMat = QMatRepr*UTildeMat
+		end_time = time.perf_counter()
+	else:
+		UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
+
 	UMatCalcTime = (end_time - start_time)
 	return UMat, UMatCalcTime
 
@@ -181,13 +188,23 @@ def findUMatSmall(QMat, UTildeMat):
 
 def checkResult(UMat, MStarMatDense, AMat):
 	print("Checking awesomenesssss of Result\n")
-	tempProd = MStarMatDense + np.dot(UMat, UMat.T)
-	temprod2 = np.dot(tempProd, AMat) 
-	finalProd = temprod2+np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
-	finnorm = LA.norm(finalProd,'fro')
-	temprod2 = np.dot(MStarMatDense, AMat) 
-	finalProd = temprod2 + np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
-	startnorm = LA.norm(finalProd,'fro')
+	if MAT_REPR_TYPE == "Sparse":
+		UMat = sparse.csr_matrix(UMat)
+		tempProd = MStarMatDense + UMat*UMat.T
+		temprod2 = tempProd*AMat
+		finalProd = temprod2+temprod2.T- 2*np.identity(MStarMatDense.todense().shape[0])
+		finnorm = LA.norm(finalProd,'fro')
+		temprod2 = MStarMatDense*AMat 
+		finalProd = temprod2 + temprod2.T- 2*np.identity(MStarMatDense.todense().shape[0])
+		startnorm = LA.norm(finalProd,'fro')
+	else:
+		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
+		temprod2 = np.dot(tempProd, AMat) 
+		finalProd = temprod2+np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
+		finnorm = LA.norm(finalProd,'fro')
+		temprod2 = np.dot(MStarMatDense, AMat) 
+		finalProd = temprod2 + np.transpose(temprod2)- 2*np.identity(MStarMatDense.shape[0])
+		startnorm = LA.norm(finalProd,'fro')
 
 	print("Starting Norm: {0}".format(startnorm))
 	print("Final Norm: {0}".format(finnorm))
@@ -239,8 +256,8 @@ def main():
 		UTildeMat, newNumRows, CholeskyCalcTime = doCholeskyFactEigenReduction(PVal)
 
 	UMat, UMatCalcTime = findUMat(QMat, UTildeMat, newNumRows)
-	if MAT_REPR_TYPE != "Sparse":
-		checkResult(UMat, MStar, AMat)
+	# if MAT_REPR_TYPE != "Sparse":
+	checkResult(UMat, MStar, AMat)
 
 	totalPerfTime = (SMatCalcTime + ThinQCalcTime + AtildeCalcTime + 
 				EMatCalcTime + PSDCalcTime + CholeskyCalcTime)
