@@ -18,7 +18,7 @@ import time
 Global variables to tune and matrices to use.
 '''
 
-MAT_REPR_TYPE = "Dense"
+MAT_REPR_TYPE = "Sparse"
 # AMatPath = "matrices/Trefethen_4096.mat"
 # MStarPath = "matrices/Trefethen_SSAI_4096.mat"
 # matPaths = ["matrices/SPLRI_n4033_r2.mat"]
@@ -57,6 +57,7 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	elif RndType == 'JLT':
 		if MAT_REPR_TYPE == "Sparse":
 			SMatOmegaMatProd = fjlt.sjlt(SMat, EmbedRow)
+			SMatOmegaMatProd = SMatOmegaMatProd.todense()
 		else:
 			SMatOmegaMatProd = fjlt.fjlt(SMat, EmbedRow)
 	else:
@@ -64,6 +65,8 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 
 	Q,R = LA.qr(SMatOmegaMatProd)
 	end_time = time.perf_counter()
+	if MAT_REPR_TYPE == "Sparse":
+		Q = sparse.csr_matrix(Q)
 	ThinQCalcTime = (end_time - start_time)
 	MNumRows = SMatOmegaMatProd.shape[0]
 	NNumCols = SMatOmegaMatProd.shape[1]
@@ -76,18 +79,28 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 
 
 def findATilde(QMat,AMat):
+	Atilde = None
 	start_time = time.perf_counter()
-	Atilde = np.dot(np.dot(QMat.T, AMat), QMat)
+	if MAT_REPR_TYPE == "Sparse":
+		Atilde = (QMat.T*AMat)*QMat
+	else:
+		Atilde = np.dot(np.dot(QMat.T, AMat), QMat)
 	end_time = time.perf_counter()
 	AtildeCalcTime = (end_time - start_time)
+	print("Finished Computing Atilde Matrix ...")
 	return Atilde, AtildeCalcTime
 
 
 def findEMat(QMat, SMat):
+	EMat = None
 	start_time = time.perf_counter()
-	EMat = np.dot(np.dot(QMat.T, SMat), QMat)
+	if MAT_REPR_TYPE == "Sparse":
+		EMat = (QMat.T*SMat)*QMat
+	else:
+		EMat = np.dot(np.dot(QMat.T, SMat), QMat)
 	end_time = time.perf_counter()
 	EMatCalcTime = (end_time - start_time)
+	print("Finished Computing E Matrix ...")
 	return EMat, EMatCalcTime
 
 
@@ -226,15 +239,22 @@ def main():
 		UTildeMat, newNumRows, CholeskyCalcTime = doCholeskyFactEigenReduction(PVal)
 
 	UMat, UMatCalcTime = findUMat(QMat, UTildeMat, newNumRows)
-	checkResult(UMat, MStar, AMat)
+	if MAT_REPR_TYPE != "Sparse":
+		checkResult(UMat, MStar, AMat)
 
 	totalPerfTime = (SMatCalcTime + ThinQCalcTime + AtildeCalcTime + 
 				EMatCalcTime + PSDCalcTime + CholeskyCalcTime)
 
 	print("Total runtime for Approximate Inverse: {0}".format(totalPerfTime))
 
+	AMatInvRepr = None
+	if MAT_REPR_TYPE == "Sparse":
+		AMatInvRepr = AMat.todense()
+	else:
+		AMatInvRepr = AMat
+
 	start_time = time.perf_counter()
-	AMatInv = LA.inv(AMat)
+	AMatInv = LA.inv(AMatInvRepr)
 	end_time = time.perf_counter()
 	fullInvTime = (end_time - start_time)
 	print("Total runtime for Complete Inverse: {0}".format(fullInvTime))
