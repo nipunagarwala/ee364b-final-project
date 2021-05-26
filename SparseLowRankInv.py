@@ -73,7 +73,10 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 	NNumCols = SMatOmegaMatProd.shape[1]
 	QFinal = Q
 	if MNumRows > NNumCols:
-		QFinal = sparse.csr_matrix(Q.todense()[:, np.arange(NNumCols)])
+		if MAT_REPR_TYPE == "Sparse":
+			QFinal = sparse.csr_matrix(Q.todense()[:, np.arange(NNumCols)])
+		else:
+			QFinal = Q[:, np.arange(NNumCols)]
 
 	print("Finished Computing QR Factorization ...")
 	return QFinal, NNumCols,ThinQCalcTime
@@ -175,7 +178,9 @@ def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
 		UMat = QMatRepr*UTildeMat
 		end_time = time.perf_counter()
 	else:
+		start_time = time.perf_counter()
 		UMat = np.dot(QMat[:,:newNumRows], UTildeMat)
+		end_time = time.perf_counter()
 
 	UMatCalcTime = (end_time - start_time)
 	return UMat, UMatCalcTime
@@ -192,11 +197,11 @@ def checkResult(UMat, MStarMatDense, AMat):
 		UMat = sparse.csr_matrix(UMat)
 		tempProd = MStarMatDense + UMat*UMat.T
 		temprod2 = tempProd*AMat
-		finalProd = temprod2+temprod2.T- 2*np.identity(MStarMatDense.todense().shape[0])
-		finnorm = LA.norm(finalProd,'fro')
+		finalProd = temprod2+temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.todense().shape[0]))
+		finnorm = sparse.linalg.norm(finalProd,'fro')
 		temprod2 = MStarMatDense*AMat 
-		finalProd = temprod2 + temprod2.T- 2*np.identity(MStarMatDense.todense().shape[0])
-		startnorm = LA.norm(finalProd,'fro')
+		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.todense().shape[0]))
+		startnorm = sparse.linalg.norm(finalProd,'fro')
 	else:
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
 		temprod2 = np.dot(tempProd, AMat) 
@@ -256,7 +261,6 @@ def main():
 		UTildeMat, newNumRows, CholeskyCalcTime = doCholeskyFactEigenReduction(PVal)
 
 	UMat, UMatCalcTime = findUMat(QMat, UTildeMat, newNumRows)
-	# if MAT_REPR_TYPE != "Sparse":
 	checkResult(UMat, MStar, AMat)
 
 	totalPerfTime = (SMatCalcTime + ThinQCalcTime + AtildeCalcTime + 
