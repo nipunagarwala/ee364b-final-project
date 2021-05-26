@@ -31,7 +31,7 @@ NEG_EIG_VAL_METHOD = "Discard"
 
 def findSMat(Mstar, AMat):
 	if MAT_REPR_TYPE == "Sparse":
-		Idn = sparse.csr_matrix(np.identity(Mstar.shape[0]))
+		Idn = sparse.identity(Mstar.shape[0])
 	else:
 		Idn = np.identity(Mstar.shape[0])
 
@@ -59,22 +59,21 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 			SMatOmegaMatProd = fjlt.sjlt(SMat, EmbedRow)
 			SMatOmegaMatProd = SMatOmegaMatProd.todense()
 		else:
+			print(SMat.shape)
 			SMatOmegaMatProd = fjlt.fjlt(SMat, EmbedRow)
 	else:
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
 
 	Q,R = LA.qr(SMatOmegaMatProd)
 	end_time = time.perf_counter()
-	if MAT_REPR_TYPE == "Sparse":
-		Q = sparse.csr_matrix(Q)
 
 	ThinQCalcTime = (end_time - start_time)
 	MNumRows = SMatOmegaMatProd.shape[0]
 	NNumCols = SMatOmegaMatProd.shape[1]
-	QFinal = Q
+	QFinal = None
 	if MNumRows > NNumCols:
 		if MAT_REPR_TYPE == "Sparse":
-			QFinal = sparse.csr_matrix(Q.todense()[:, np.arange(NNumCols)])
+			QFinal = sparse.csc_matrix(Q[:, np.arange(NNumCols)])
 		else:
 			QFinal = Q[:, np.arange(NNumCols)]
 
@@ -171,9 +170,10 @@ def doCholeskyFactEigenReduction(PMat):
 def findUMat(QMat, UTildeMat, newNumRows=NUM_EMBED_ROWS):
 	# If we need an even further reduction in number of rows due to discarding
 	# of eigenvalues, do that with the newNumRows
-	QMatRepr = None
+	findUMatSmall = None
 	if MAT_REPR_TYPE == "Sparse":
-		QMatRepr = sparse.csr_matrix(QMat.todense()[:,:newNumRows])
+		QMatRepr = sparse.csc_matrix(QMat.todense()[:,:newNumRows])
+		UTildeMat = sparse.csc_matrix(UTildeMat)
 		start_time = time.perf_counter()
 		UMat = QMatRepr*UTildeMat
 		end_time = time.perf_counter()
@@ -196,13 +196,13 @@ def checkResult(UMat, MStarMatDense, AMat):
 	finnorm = 0
 	startnorm = 0
 	if MAT_REPR_TYPE == "Sparse":
-		UMat = sparse.csr_matrix(UMat)
+		UMat = sparse.csc_matrix(UMat)
 		tempProd = MStarMatDense + UMat*UMat.T
 		temprod2 = tempProd*AMat
-		finalProd = temprod2+temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.shape[0]))
+		finalProd = temprod2 + temprod2.T - sparse.identity(MStarMatDense.shape[0])
 		finnorm = sparse.linalg.norm(finalProd,'fro')
 		temprod2 = MStarMatDense*AMat 
-		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2*np.identity(MStarMatDense.shape[0]))
+		finalProd = temprod2 + temprod2.T - sparse.identity(MStarMatDense.shape[0])
 		startnorm = sparse.linalg.norm(finalProd,'fro')
 	else:
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
@@ -229,15 +229,15 @@ def read_matrices(matPaths):
 		AMatPath, MStarPath = matPaths
 		if "Wathen" in AMatPath:
 			if MAT_REPR_TYPE == "Sparse":
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['A']      # Sparse CSC
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
+				AMat = sparse.csc_matrix(sio.loadmat(AMatPath, squeeze_me=True)['A'])      # Sparse CSC
+				MStar = sparse.csc_matrix(sio.loadmat(MStarPath, squeeze_me=True)['Mst'])  # Sparse CSC
 			else:
 				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['A'].todense())
 				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
 		elif "Trefethen" in AMatPath:
 			if MAT_REPR_TYPE == "Sparse":
-				AMat = sio.loadmat(AMatPath, squeeze_me=True)['tref2']  # Sparse CSC
-				MStar = sio.loadmat(MStarPath, squeeze_me=True)['Mst']  # Sparse CSC
+				AMat = sparse.csc_matrix(sio.loadmat(AMatPath, squeeze_me=True)['tref2'])  # Sparse CSC
+				MStar = sparse.csc_matrix(sio.loadmat(MStarPath, squeeze_me=True)['Mst'])  # Sparse CSC
 			else:
 				AMat = np.asarray(sio.loadmat(AMatPath, squeeze_me=True)['tref2'].todense())
 				MStar = np.asarray(sio.loadmat(MStarPath, squeeze_me=True)['Mst'].todense())
@@ -255,8 +255,9 @@ def main():
 	EMat, EMatCalcTime = findEMat(QMat, SMat)
 
 	PVal, PSDCalcTime = solveForPSDSymmetricP(EMat,AMatTilde, RNumCols)
-	UTildeMat, newNumRows = None, None
+	UTildeMat, newNumRows = None, NUM_EMBED_ROWS
 	CholeskyCalcTime = 0
+
 	if NEG_EIG_VAL_METHOD == "Abs":
 		UTildeMat, CholeskyCalcTime = doCholeskyFactAbsEigenVal(PVal)
 	elif NEG_EIG_VAL_METHOD == "Discard":
