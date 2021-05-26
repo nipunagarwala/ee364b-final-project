@@ -59,7 +59,6 @@ def findThinQ(SMat, EmbedRow, RndType='JLT'):
 			SMatOmegaMatProd = fjlt.sjlt(SMat, EmbedRow)
 			SMatOmegaMatProd = SMatOmegaMatProd.todense()
 		else:
-			print(SMat.shape)
 			SMatOmegaMatProd = fjlt.fjlt(SMat, EmbedRow)
 	else:
 		sys.exit('Random Matrix type is neither JLT nor Gaussian')
