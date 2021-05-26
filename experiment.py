@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import pickle
 import time
 import SparseLowRankInv as slri
+from scipy import sparse
 
 MAT_REPR_TYPE = "Dense"
 SAVE_NAME = 'result/baselines'
@@ -16,14 +17,24 @@ NEG_EIG_VAL_METHOD = 'Abs'
 
 np.random.seed(0)
 
-def calcObjective(UMat, MStarMatDense, AMat):
-	if UMat is None:
-		temprod2 = np.dot(MStarMatDense, AMat) # Approx Inv A @ A 
+def calcObjective(UMat, MStar, AMat):
+	if slri.MAT_REPR_TYPE == 'Sparse':
+		if UMat is None:
+			temprod2 = MStar * AMat # Approx Inv A @ A 
+		else:
+			UMat = sparse.csr_matrix(UMat)
+			tempProd = MStar + UMat * UMat.T
+			temprod2 = tempProd * AMat
+		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2 * np.identity(MStar.shape[0]))
+		obj = sparse.linalg.norm(finalProd,'fro')
 	else:
-		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
-		temprod2 = np.dot(tempProd, AMat) 
-	finalProd = temprod2 + np.transpose(temprod2) - 2 * np.identity(MStarMatDense.shape[0])
-	obj = np.linalg.norm(finalProd,'fro')
+		if UMat is None:
+			temprod2 = np.dot(MStar, AMat) # Approx Inv A @ A 
+		else:
+			tempProd = MStar + np.dot(UMat, UMat.T)
+			temprod2 = np.dot(tempProd, AMat) 
+		finalProd = temprod2 + np.transpose(temprod2) - 2 * np.identity(MStar.shape[0])
+		obj = np.linalg.norm(finalProd,'fro')
 	return obj
 
 def runSparseLowRankInvManyRanks(matPaths, targetRanks, completeInverse=False):
@@ -36,9 +47,10 @@ def runSparseLowRankInvManyRanks(matPaths, targetRanks, completeInverse=False):
 	time_log = np.zeros(len(targetRanks))
 	AMat, MStar = slri.read_matrices(matPaths)
 
-	SMat, SMatCalcTime = slri.findSMat(MStar, AMat)
 	obj_log[0] = calcObjective(None, MStar, AMat)
 	print('Starting norm: {}'.format(obj_log[0]))
+
+	SMat, SMatCalcTime = slri.findSMat(MStar, AMat)
 
 	# Find the low-rank correction U matrix for each target rank
 	for i, rank in enumerate(targetRanks):
@@ -115,7 +127,7 @@ def runExperiments(completeInverse=False):
 		['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
 	]
 	SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512', 'result/Trefethen_4096']
-	TARGET_RANKS = np.arange(1, 65)
+	TARGET_RANKS = np.arange(1, 41)
 
 	for saveName, matPaths in zip(SAVE_NAMES, MAT_PATHS):
 		obj_history, time_history, fullInvTime = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS, completeInverse=completeInverse)
@@ -185,7 +197,7 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 
 def main():
 	# runBaselineMatrices(NUM_EMBED_ROWS_LIST, SAVE_NAME)
-	runExperiments(completeInverse=True)
+	runExperiments(completeInverse=False)
 	# n = 40000
 	# p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
 	# r_list = np.arange(1, 100)
