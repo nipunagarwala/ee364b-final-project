@@ -2,6 +2,7 @@
 Generate some results for midterm report
 """
 
+import os
 import numpy as np
 from matplotlib import pyplot as plt
 import pickle
@@ -9,10 +10,23 @@ import time
 import SparseLowRankInv as slri
 from scipy import sparse
 
-SAVE_NAME = 'result/baselines'
-NUM_EMBED_ROWS_LIST = np.arange(1, 21)
+ACTION = 'flop'
+
+# Parameters for running Sparse + Low-rank Inverse
+SAVEDIR = 'result'
 PROJECTION = 'JLT'
 NEG_EIG_VAL_METHOD = 'Abs'
+
+# Parameter for baseline
+NUM_EMBED_ROWS_LIST = np.arange(1, 21)  # Target rank r of U
+
+# Parameter for experiment
+EXPSIZE = 'small'
+
+# Parameters for flop count plotting
+n = 43681
+p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
+r_list = np.arange(1, 100)
 
 np.random.seed(0)
 
@@ -90,10 +104,12 @@ def runBaselineMatrices(targetRanks, saveName):
 		'matrices/SPLRI_n4033_r6.mat',
 		'matrices/SPLRI_n4033_r8.mat',
 	]
+
+	results['targetRanks'] = targetRanks
 	for name, path in zip(names, matPaths):
 		results[name] = runSparseLowRankInvManyRanks([path], targetRanks)
 
-	pickle.dump(results, open('{}.p'.format(saveName), 'wb'))
+	pickle.dump(results, open(os.path.join(SAVEDIR, '{}.p'.format(saveName), 'wb')))
 
 	plotRanks = np.concatenate(([0], targetRanks))
 	for name in names:
@@ -102,69 +118,58 @@ def runBaselineMatrices(targetRanks, saveName):
 	plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 	plt.title('Error of Sparse + Low-rank Approximation')
 	plt.legend()
-	plt.savefig('{}.png'.format(saveName))
+	plt.savefig(os.path.join(SAVEDIR, '{}.png'.format(saveName)), bbox_inches='tight')
 
-def runExperiments(completeInverse=False):
-	# MAT_PATHS = [
-	# 	['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
-	# 	['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
-	# 	['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
-	# 	['matrices/Trefethen_32768.mat', 'matrices/Trefethen_SSAI_32768.mat'],
-	# 	['matrices/Wathen_11041.mat', 'matrices/Wathen_SSAI_11041.mat'],
-	# 	['matrices/Wathen_43681.mat', 'matrices/Wathen_SSAI_43681.mat'],
-	# 	['matrices/Wathen_146081.mat', 'matrices/Wathen_SSAI_146081.mat']
-	# ]
-	# SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512',
-	# 				'result/Trefethen_4096', 'result/Trefethen_32768',
-	# 				'result/Wathen_11041', 'result/Wathen_43681',
-	# 				'result/Wathen_146081']
+def runExperiments(expSize, completeInverse=False):
 
-	# Dense-representation-friendly matrices
-	# MAT_PATHS = [
-	# 	['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
-	# 	['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
-	# 	['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
-	# ]
-	# SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512', 'result/Trefethen_4096']
-	# TARGET_RANKS = np.arange(2, 64, 4)
+	if expSize == 'small':
+		# Dense-representation-friendly matrices
+		mathPaths = [
+			['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
+			['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
+			['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
+		]
+		saveNames = ['Trefethen_64', 'Trefethen_512', 'Trefethen_4096']
+		targetRanks = np.arange(2, 64, 4)
 
-	# Large matrices
-	MAT_PATHS = [
-		['matrices/Trefethen_32768.mat', 'matrices/Trefethen_SSAI_32768.mat'],
-		['matrices/Wathen_43681.mat', 'matrices/Wathen_SSAI_43681.mat']
-	]
-	SAVE_NAMES = ['result/Trefethen_32768', 'result/Wathen_43681']
-	TARGET_RANKS = np.array([1, 2, 4, 6, 8, 12, 16, 20, 24, 28])
+	elif expSize == 'large':
+		# Large matrices
+		mathPaths = [
+			['matrices/Trefethen_32768.mat', 'matrices/Trefethen_SSAI_32768.mat'],
+			['matrices/Wathen_43681.mat', 'matrices/Wathen_SSAI_43681.mat']
+		]
+		saveNames = ['Trefethen_32768', 'Wathen_43681']
+		targetRanks = np.array([1, 2, 4, 6, 8, 12, 16, 20, 24, 28])
 
-	for saveName, matPaths in zip(SAVE_NAMES, MAT_PATHS):
-		obj_history, time_history, fullInvTime = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS, completeInverse=completeInverse)
+	for saveName, matPaths in zip(saveNames, mathPaths):
+		obj_history, time_history, fullInvTime = runSparseLowRankInvManyRanks(matPaths, targetRanks, completeInverse=completeInverse)
 		save_data = {
 			'obj': obj_history,
 			'time': time_history,
-			'rank': TARGET_RANKS
+			'rank': targetRanks
 		}
 
 		# Save results
-		pickle.dump(save_data, open('{}.p'.format(saveName), 'wb'))
+		pickle.dump(save_data, open(os.path.join(SAVEDIR, '{}.p'.format(saveName), 'wb')))
 
 		# Plot objective
-		plotRanks = np.concatenate(([0], TARGET_RANKS))
+		plotRanks = np.concatenate(([0], targetRanks))
 		plt.plot(plotRanks, obj_history)
 		plt.xlabel('Target rank, r')
 		plt.ylabel(r'$||UU^TA + AUU^T - S||_F$')
 		plt.title('Error of Sparse + Low-rank Approximation')
-		plt.savefig('{}_obj.png'.format(saveName))
+		plt.savefig(os.path.join(SAVEDIR, '{}_obj.png'.format(saveName)), bbox_inches='tight')
 		plt.clf()
 
 		# Plot time
-		plt.plot(TARGET_RANKS, time_history, label='Approximate inverse')
+		plt.plot(targetRanks, time_history, label='Approximate inverse')
 		if fullInvTime is not None:
 			plt.axhline(y=fullInvTime, label='Complete inverse')
 		plt.xlabel('Target rank, r')
 		plt.ylabel('Time (s)')
 		plt.title('Computation time')
 		plt.legend()
-		plt.savefig('{}_time.png'.format(saveName))
+		plt.savefig(os.path.join(SAVEDIR, '{}_time.png'.format(saveName)), bbox_inches='tight')
 		plt.clf()
 
 def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
@@ -173,19 +178,19 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 	p_list = (n * p_frac_list).astype(int)
 
 	# Compute flop counts not depending on the sparisty p
-	SJLT_count = n * (n + 1) * r_list
+	SJLT_count = (n + 1) * n * r_list
 	QR_count = 2 * (n - r_list / 3) * (r_list ** 2)
 	A_tilde_count = 2 * (n ** 2) * r_list
 	E_count = 2 * (n ** 2) * r_list
 	cvx_count = 1000 * (r_list ** 3)
 	cholesky_count = (r_list ** 3) / 3
-	U_count = (n ** 2) * r_list
+	U_count = n * (r_list ** 2)
 	count_no_p = SJLT_count + QR_count + A_tilde_count + E_count + cvx_count + \
 					cholesky_count + U_count
 
 	# Computing flop counts depending on the sparsity p
 	for i, p in enumerate(p_list):
-		MStar_count = 2 * (n ** 2) * p
+		MStar_count = 4 * n * (p ** 2)
 		S_count = 2 * (n ** 2) * p
 		flop_counts[i] = count_no_p + MStar_count + S_count
 
@@ -199,16 +204,18 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 	plt.ylabel('Flop count')
 	plt.title('Flop Count of Approximate Inverse, n = {}'.format(n))
 	plt.legend()
-	plt.savefig('{}.png'.format(savename))
+	plt.savefig(os.path.join(SAVEDIR, '{}.png'.format(savename)), bbox_inches='tight')
 	plt.clf()
 
 def main():
-	# runBaselineMatrices(NUM_EMBED_ROWS_LIST, SAVE_NAME)
-	runExperiments(completeInverse=False)
-	# n = 40000
-	# p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
-	# r_list = np.arange(1, 100)
-	# plot_analytical_flop_counts(n, p_frac_list, r_list, 'result/flop_{}'.format(n))
+	if ACTION == 'baseline':
+		runBaselineMatrices(NUM_EMBED_ROWS_LIST, 'baseline')
+	elif ACTION == 'experiment':
+		runExperiments(completeInverse=False)
+	elif ACTION == 'flop':
+		plot_analytical_flop_counts(n, p_frac_list, r_list, 'flop_{}'.format(n))
+	else:
+		raise ValueError('Invalid ACTION: {}'.format(ACTION))
 
 if __name__ == '__main__':
 	main()

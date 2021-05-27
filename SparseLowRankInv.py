@@ -26,7 +26,7 @@ matPaths = [ "matrices/Trefethen_4096.mat",  "matrices/Trefethen_SSAI_4096.mat"]
 NUM_EMBED_ROWS = 16
 
 # Options include: Abs, Discard
-NEG_EIG_VAL_METHOD = "Discard"
+NEG_EIG_VAL_METHOD = "Abs"
 
 
 def findSMat(Mstar, AMat):
@@ -198,10 +198,10 @@ def checkResult(UMat, MStarMatDense, AMat):
 		UMat = sparse.csc_matrix(UMat)
 		tempProd = MStarMatDense + UMat*UMat.T
 		temprod2 = tempProd*AMat
-		finalProd = temprod2 + temprod2.T - sparse.identity(MStarMatDense.shape[0])
+		finalProd = temprod2 + temprod2.T - 2 * sparse.identity(MStarMatDense.shape[0])
 		finnorm = sparse.linalg.norm(finalProd,'fro')
 		temprod2 = MStarMatDense*AMat 
-		finalProd = temprod2 + temprod2.T - sparse.identity(MStarMatDense.shape[0])
+		finalProd = temprod2 + temprod2.T - 2 * sparse.identity(MStarMatDense.shape[0])
 		startnorm = sparse.linalg.norm(finalProd,'fro')
 	else:
 		tempProd = MStarMatDense + np.dot(UMat, UMat.T)
