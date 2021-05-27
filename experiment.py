@@ -9,7 +9,6 @@ import time
 import SparseLowRankInv as slri
 from scipy import sparse
 
-MAT_REPR_TYPE = "Dense"
 SAVE_NAME = 'result/baselines'
 NUM_EMBED_ROWS_LIST = np.arange(1, 21)
 PROJECTION = 'JLT'
@@ -22,10 +21,10 @@ def calcObjective(UMat, MStar, AMat):
 		if UMat is None:
 			temprod2 = MStar * AMat # Approx Inv A @ A 
 		else:
-			UMat = sparse.csr_matrix(UMat)
+			UMat = sparse.csc_matrix(UMat)
 			tempProd = MStar + UMat * UMat.T
 			temprod2 = tempProd * AMat
-		finalProd = temprod2 + temprod2.T- sparse.csr_matrix(2 * np.identity(MStar.shape[0]))
+		finalProd = temprod2 + temprod2.T- 2 * sparse.identity(MStar.shape[0])
 		obj = sparse.linalg.norm(finalProd,'fro')
 	else:
 		if UMat is None:
@@ -121,13 +120,21 @@ def runExperiments(completeInverse=False):
 	# 				'result/Wathen_146081']
 
 	# Dense-representation-friendly matrices
+	# MAT_PATHS = [
+	# 	['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
+	# 	['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
+	# 	['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
+	# ]
+	# SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512', 'result/Trefethen_4096']
+	# TARGET_RANKS = np.arange(2, 64, 4)
+
+	# Large matrices
 	MAT_PATHS = [
-		['matrices/Trefethen_64.mat', 'matrices/Trefethen_SSAI_64.mat'],
-		['matrices/Trefethen_512.mat', 'matrices/Trefethen_SSAI_512.mat'],
-		['matrices/Trefethen_4096.mat', 'matrices/Trefethen_SSAI_4096.mat'],
+		['matrices/Trefethen_32768.mat', 'matrices/Trefethen_SSAI_32768.mat'],
+		['matrices/Wathen_43681.mat', 'matrices/Wathen_SSAI_43681.mat']
 	]
-	SAVE_NAMES = ['result/Trefethen_64', 'result/Trefethen_512', 'result/Trefethen_4096']
-	TARGET_RANKS = np.arange(1, 41)
+	SAVE_NAMES = ['result/Trefethen_32768', 'result/Wathen_43681']
+	TARGET_RANKS = np.array([1, 2, 4, 6, 8, 12, 16, 20, 24, 28])
 
 	for saveName, matPaths in zip(SAVE_NAMES, MAT_PATHS):
 		obj_history, time_history, fullInvTime = runSparseLowRankInvManyRanks(matPaths, TARGET_RANKS, completeInverse=completeInverse)
