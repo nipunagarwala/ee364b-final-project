@@ -13,7 +13,7 @@ from scipy import sparse
 ACTION = 'flop'
 
 # Parameters for running Sparse + Low-rank Inverse
-SAVEDIR = 'result'
+SAVEDIR = 'result_paper'
 PROJECTION = 'JLT'
 NEG_EIG_VAL_METHOD = 'Abs'
 
@@ -24,7 +24,8 @@ NUM_EMBED_ROWS_LIST = np.arange(1, 21)  # Target rank r of U
 EXPSIZE = 'small'
 
 # Parameters for flop count plotting
-n = 43681
+# n = 43681
+n = 32768
 p_frac_list = np.array([1 / 5, 1 / 10, 1 / 20])
 r_list = np.arange(1, 100)
 
@@ -180,19 +181,18 @@ def plot_analytical_flop_counts(n, p_frac_list, r_list, savename):
 	# Compute flop counts not depending on the sparisty p
 	SJLT_count = (n + 1) * n * r_list
 	QR_count = 2 * (n - r_list / 3) * (r_list ** 2)
-	A_tilde_count = 2 * (n ** 2) * r_list
-	E_count = 2 * (n ** 2) * r_list
 	cvx_count = 1000 * (r_list ** 3)
 	cholesky_count = (r_list ** 3) / 3
 	U_count = n * (r_list ** 2)
-	count_no_p = SJLT_count + QR_count + A_tilde_count + E_count + cvx_count + \
-					cholesky_count + U_count
+	count_no_p = SJLT_count + QR_count + cvx_count + cholesky_count + U_count
 
 	# Computing flop counts depending on the sparsity p
 	for i, p in enumerate(p_list):
-		MStar_count = 4 * n * (p ** 2)
+		MStar_count = 2 * n * (p ** 2)
 		S_count = 2 * (n ** 2) * p
-		flop_counts[i] = count_no_p + MStar_count + S_count
+		A_tilde_count = 2 * n * p * r_list
+		E_count = 2 * n * (p ** 2) * r_list
+		flop_counts[i] = count_no_p + MStar_count + S_count + A_tilde_count + E_count
 
 	inv_count = n ** 3
 
